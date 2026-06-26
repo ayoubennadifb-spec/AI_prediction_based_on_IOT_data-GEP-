@@ -541,55 +541,49 @@ export default function DashboardPage() {
             <p className="mt-3 text-sm text-red-600">{histError}</p>
           ) : null}
 
-          {/* Results table */}
+          {/* Results graph */}
           {histData !== null && (
             <div className="mt-4">
-              <div className="mb-2 flex items-center justify-between">
-                <p className="text-sm text-slate-500">
-                  {histData.length === 0
-                    ? "Aucune donnée pour cette période."
-                    : `${histData.length} point${histData.length > 1 ? "s" : ""} · agrégation 5 min`}
-                </p>
-                {histData.length > 0 && (
-                  <button
-                    onClick={handleExportHistoryCsv}
-                    className="flex items-center gap-1.5 rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-xs font-medium text-slate-700 shadow-sm transition hover:bg-slate-50"
-                  >
-                    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                      <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
-                      <polyline points="7 10 12 15 17 10" />
-                      <line x1="12" y1="15" x2="12" y2="3" />
-                    </svg>
-                    Exporter CSV
-                  </button>
-                )}
-              </div>
-
-              {histData.length > 0 && (
-                <div className="max-h-80 overflow-auto rounded-xl border border-slate-200">
-                  <table className="w-full text-sm">
-                    <thead className="sticky top-0 bg-slate-100 text-xs font-semibold text-slate-500">
-                      <tr>
-                        <th className="px-4 py-2 text-left">Horodatage</th>
-                        <th className="px-4 py-2 text-right">
-                          {HISTORY_FIELDS.find((f) => f.value === histField)?.label ?? histField}
-                        </th>
-                      </tr>
-                    </thead>
-                    <tbody className="divide-y divide-slate-100">
-                      {histData.map((pt, i) => (
-                        <tr key={i} className="hover:bg-slate-50">
-                          <td className="px-4 py-1.5 text-slate-600">
-                            {new Date(pt.time).toLocaleString()}
-                          </td>
-                          <td className="px-4 py-1.5 text-right font-mono text-slate-800">
-                            {pt.value === null ? "—" : pt.value.toFixed(2)}
-                          </td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
+              {histData.length === 0 ? (
+                <p className="text-sm text-slate-500">Aucune donnée pour cette période.</p>
+              ) : (
+                <>
+                  <div className="mb-2 flex items-center justify-between">
+                    <p className="text-sm text-slate-500">
+                      {histData.length} point{histData.length > 1 ? "s" : ""} · agrégation 5 min
+                    </p>
+                    <button
+                      onClick={handleExportHistoryCsv}
+                      className="flex items-center gap-1.5 rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-xs font-medium text-slate-700 shadow-sm transition hover:bg-slate-50"
+                    >
+                      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                        <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+                        <polyline points="7 10 12 15 17 10" />
+                        <line x1="12" y1="15" x2="12" y2="3" />
+                      </svg>
+                      Exporter CSV
+                    </button>
+                  </div>
+                  <ZoneChart
+                    title={HISTORY_FIELDS.find((f) => f.value === histField)?.label ?? histField}
+                    unit={
+                      histField === "temperature" ? " °C"
+                      : histField === "humidite" ? " %"
+                      : histField === "gaz" ? " ppm"
+                      : ""
+                    }
+                    measured={histData as SeriesPoint[]}
+                    predicted={[]}
+                    forecast={false}
+                    color={
+                      histField === "temperature" ? "#76b82a"
+                      : histField === "humidite" ? "#0ea5e9"
+                      : histField === "gaz" ? "#14b8a6"
+                      : "#a855f7"
+                    }
+                    measuredLabel={HISTORY_FIELDS.find((f) => f.value === histField)?.label ?? histField}
+                  />
+                </>
               )}
             </div>
           )}

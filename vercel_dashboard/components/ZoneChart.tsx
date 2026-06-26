@@ -80,16 +80,21 @@ function ChartTooltip({
   unit,
 }: TooltipProps<number, string> & { unit: string }) {
   if (!active || !payload || payload.length === 0) return null;
+  // Deduplicate: skip entries with no name (Area gradient shadow) or duplicate dataKey
+  const seen = new Set<string>();
   return (
     <div className="rounded-lg border border-slate-200 bg-white/95 px-3 py-2 shadow-card-hover backdrop-blur">
       <p className="mb-1 text-xs font-medium text-slate-500">
         {fmtTooltipTime(Number(label))}
       </p>
       {payload.map((entry) => {
-        if (entry.value === null || entry.value === undefined) return null;
+        const key = entry.dataKey as string;
+        if (!entry.name || entry.value === null || entry.value === undefined) return null;
+        if (seen.has(key)) return null;
+        seen.add(key);
         return (
           <p
-            key={entry.dataKey as string}
+            key={key}
             className="flex items-center gap-2 text-sm"
           >
             <span
@@ -120,6 +125,7 @@ export default function ZoneChart({
   const data = mergeSeries(measured, predicted);
   const hasMeasured = measured.some((p) => p.value !== null);
   const hasForecast = forecast && predicted.some((p) => p.value !== null);
+  const hasAnyData = hasMeasured || hasForecast;
 
   // "now" marker: boundary between measured history and forecast.
   const lastMeasured = measured.length
@@ -138,7 +144,7 @@ export default function ZoneChart({
       </div>
 
       <div className="h-72 w-full">
-        {hasMeasured ? (
+        {hasAnyData ? (
           <ResponsiveContainer width="100%" height="100%">
             <ComposedChart
               data={data}
