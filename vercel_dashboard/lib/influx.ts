@@ -97,17 +97,20 @@ from(bucket: "${bucket}")
 `;
 }
 
-/** PREDICTED: future points from the DEST base (field carries `_pred`). */
+/** PREDICTED: past + future points from the DEST base (field carries `_pred`).
+ *  We look back `lookbackHours` so past predictions overlap with measured data
+ *  for a real-time comparison view, and forward `horizonHours` for the forecast. */
 function predictionFlux(
   bucket: string,
   measurement: string,
   field: Field,
   horizonHours = 4,
+  lookbackHours = 6,
 ): string {
   const predField = `${field}_pred`;
   return `
 from(bucket: "${bucket}")
-  |> range(start: -30m, stop: ${horizonHours}h)
+  |> range(start: -${lookbackHours}h, stop: ${horizonHours}h)
   |> filter(fn: (r) => r._measurement == "${measurement}")
   |> filter(fn: (r) => r._field == "${predField}")
   |> keep(columns: ["_time", "_value"])
@@ -192,12 +195,4 @@ from(bucket: "${bucket}")
  */
 export async function fetchHistory(
   zone: Zone,
-  field: Field,
-  from: string,
-  to: string,
-): Promise<SeriesPoint[]> {
-  return runSeriesQuery(
-    srcQueryApi(zone),
-    historyFlux(sourceBucket(zone), sourceMeasurement(zone), field, from, to),
-  );
-}
+  fi
