@@ -83,11 +83,12 @@ def _query_pivot(src_client, bucket, measurement, influx_fields) -> pd.DataFrame
     """Last LOOKBACK+10 min of the given fields from the SOURCE base, pivoted to
     one row per minute. No fill(usePrevious): gaps stay visible for the guard."""
     lb = gconf.LOOKBACK + 10
+    flux_set = "[" + ", ".join(f'"{f}"' for f in influx_fields) + "]"
     flux = f'''
     from(bucket: "{bucket}")
       |> range(start: -{lb}m)
       |> filter(fn: (r) => r._measurement == "{measurement}")
-      |> filter(fn: (r) => contains(value: r._field, set: {influx_fields!r}))
+      |> filter(fn: (r) => contains(value: r._field, set: {flux_set}))
       |> pivot(rowKey: ["_time"], columnKey: ["_field"], valueColumn: "_value")
     '''
     tables = src_client.query_api().query_data_frame(flux)
