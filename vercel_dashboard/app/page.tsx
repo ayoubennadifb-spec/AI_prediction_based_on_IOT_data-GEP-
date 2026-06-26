@@ -16,9 +16,6 @@ import {
   ThermometerIcon,
 } from "@/components/icons";
 import { t, type Lang } from "@/lib/i18n";
-import LangToggle from "@/components/LangToggle";
-
-void LangToggle; // imported for side-effect; Header renders it directly
 
 type Zone = 1 | 2;
 type Field = "temperature" | "humidite" | "gaz" | "pmv";
