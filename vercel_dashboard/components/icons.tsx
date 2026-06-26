@@ -54,3 +54,15 @@ export function ForecastIcon(props: IconProps) {
     </svg>
   );
 }
+
+export function PmvIcon(props: IconProps) {
+  return (
+    <svg {...base} {...props}>
+      {/* Person silhouette (comfort / human thermal sensation) */}
+      <circle cx="12" cy="5" r="2" />
+      <path d="M12 9v6" />
+      <path d="M9 11h6" />
+      <path d="M10 21l2-6 2 6" />
+    </svg>
+  );
+}

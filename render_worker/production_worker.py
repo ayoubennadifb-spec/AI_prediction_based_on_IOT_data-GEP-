@@ -35,6 +35,7 @@ from influxdb_client.client.write_api import SYNCHRONOUS
 
 # --- your validated pipeline (vendored next to this file) ------------------
 from gep_forecast import config as gconf
+from gep_forecast import comfort
 from gep_forecast import serving
 from gep_forecast.scaling import ScalerBundle
 from tensorflow.keras.models import load_model
@@ -123,17 +124,34 @@ def fetch_zone2(src_client, co2_proxy: float) -> pd.DataFrame:
 
 def write_forecast(dst_client, result, measurement: str) -> int:
     """Write the 4 h forecast to YOUR base (DST_BUCKET), dashboard schema:
-    fields `temperature_pred`, `humidite_pred`, one point per future minute."""
+    fields `temperature_pred`, `humidite_pred`, `pmv_pred`, one point per future minute."""
+    import numpy as np
+
+    # Pre-compute PMV for the whole forecast trajectory (vectorized)
+    frame = result.frame
+    temps = frame["temperature"].to_numpy(dtype=float)
+    rhs   = frame["humidity"].to_numpy(dtype=float)
+    when  = frame.index  # DatetimeIndex (UTC)
+    try:
+        pmv_df = comfort.pmv_ppd_frame(temps, rhs, when)
+        pmv_values = pmv_df["pmv"].to_numpy(dtype=float)
+    except Exception:  # noqa: BLE001 – pythermalcomfort not available, skip gracefully
+        pmv_values = np.full(len(frame), float("nan"))
+
     wapi = dst_client.write_api(write_options=SYNCHRONOUS)
     points = []
-    for ts, row in result.frame.iterrows():
-        points.append(
+    for i, (ts, row) in enumerate(frame.iterrows()):
+        pt = (
             Point(measurement)
             .tag("origin", result.origin.isoformat())
             .field("temperature_pred", float(row["temperature"]))
             .field("humidite_pred", float(row["humidity"]))
-            .time(ts.to_pydatetime(), WritePrecision.NS)
         )
+        pmv_val = pmv_values[i]
+        if not (pmv_val != pmv_val):  # skip NaN (NaN != NaN)
+            pt = pt.field("pmv_pred", float(pmv_val))
+        pt = pt.time(ts.to_pydatetime(), WritePrecision.NS)
+        points.append(pt)
     wapi.write(bucket=DST_BUCKET, org=DST_ORG, record=points)
     return len(points)
 
@@ -191,8 +209,4 @@ def main() -> None:
         if RUN_ONCE:
             log.info("RUN_ONCE -> one cycle done, exiting (cron mode).")
             break
-        time.sleep(max(1.0, PREDICT_EVERY_SEC - (time.time() - t0)))
-
-
-if __name__ == "__main__":
-    main()
+        time.sleep(max(1.0, PREDICT_EVERY_SEC 

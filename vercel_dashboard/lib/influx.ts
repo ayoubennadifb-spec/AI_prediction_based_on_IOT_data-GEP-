@@ -12,10 +12,10 @@ import { InfluxDB, type QueryApi } from "@influxdata/influxdb-client";
 
 export type Zone = 1 | 2;
 // `gaz` = the MQ-135 air-quality / CO2 reading (Zone 1 only; Zone 2 has no gas sensor).
-export type Field = "temperature" | "humidite" | "gaz";
+export type Field = "temperature" | "humidite" | "gaz" | "pmv";
 
 // Fields the worker produces a forecast for. CO2 (`gaz`) is real-time only.
-export const FORECASTABLE_FIELDS: Field[] = ["temperature", "humidite"];
+export const FORECASTABLE_FIELDS: Field[] = ["temperature", "humidite", "pmv"];
 
 export interface SeriesPoint {
   time: string; // ISO-8601 UTC
@@ -165,4 +165,39 @@ export async function fetchSeries(
   ]);
 
   return { zone, field, measured, predicted };
+}
+
+/** HISTORY: raw sensor data for a custom time range from the SOURCE base. */
+function historyFlux(
+  bucket: string,
+  measurement: string,
+  field: Field,
+  from: string,
+  to: string,
+): string {
+  return `
+from(bucket: "${bucket}")
+  |> range(start: ${from}, stop: ${to})
+  |> filter(fn: (r) => r._measurement == "${measurement}")
+  |> filter(fn: (r) => r._field == "${field}")
+  |> aggregateWindow(every: 5m, fn: mean, createEmpty: false)
+  |> keep(columns: ["_time", "_value"])
+  |> sort(columns: ["_time"])
+`;
+}
+
+/**
+ * Fetch raw sensor history for a zone+field between two ISO timestamps.
+ * Only queries the SOURCE base (no predictions).
+ */
+export async function fetchHistory(
+  zone: Zone,
+  field: Field,
+  from: string,
+  to: string,
+): Promise<SeriesPoint[]> {
+  return runSeriesQuery(
+    srcQueryApi(zone),
+    historyFlux(sourceBucket(zone), sourceMeasurement(zone), field, from, to),
+  );
 }
