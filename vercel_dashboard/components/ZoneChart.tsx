@@ -80,7 +80,7 @@ function ChartTooltip({
   unit,
 }: TooltipProps<number, string> & { unit: string }) {
   if (!active || !payload || payload.length === 0) return null;
-  // Deduplicate: skip entries with no name (Area gradient shadow) or duplicate dataKey
+  // Deduplicate: Area gradient shadow and Line share the same dataKey "measured"
   const seen = new Set<string>();
   return (
     <div className="rounded-lg border border-slate-200 bg-white/95 px-3 py-2 shadow-card-hover backdrop-blur">
@@ -93,10 +93,7 @@ function ChartTooltip({
         if (seen.has(key)) return null;
         seen.add(key);
         return (
-          <p
-            key={key}
-            className="flex items-center gap-2 text-sm"
-          >
+          <p key={key} className="flex items-center gap-2 text-sm">
             <span
               className="h-2 w-2 rounded-full"
               style={{ backgroundColor: entry.color }}
@@ -110,6 +107,25 @@ function ChartTooltip({
         );
       })}
     </div>
+  );
+}
+
+function DownloadIcon() {
+  return (
+    <svg
+      width="13"
+      height="13"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    >
+      <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+      <polyline points="7 10 12 15 17 10" />
+      <line x1="12" y1="15" x2="12" y2="3" />
+    </svg>
   );
 }
 
@@ -134,13 +150,42 @@ export default function ZoneChart({
 
   const gradientId = `grad-${color.replace("#", "")}`;
 
+  function handleExportCsv() {
+    const safeTitle = title.replace(/[^a-z0-9]/gi, "_").toLowerCase();
+    const header = `timestamp,${measuredLabel ?? "mesure"},prevision_LSTM`;
+    const rows = data.map((row) => {
+      const t = new Date(row.t).toISOString();
+      return `${t},${row.measured ?? ""},${row.predicted ?? ""}`;
+    });
+    const csv = [header, ...rows].join("\n");
+    const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `${safeTitle}.csv`;
+    a.click();
+    URL.revokeObjectURL(url);
+  }
+
   return (
     <div className="rounded-xl border border-slate-200/80 bg-white p-5 shadow-card">
       <div className="mb-4 flex items-center justify-between gap-2">
         <h3 className="text-sm font-semibold text-slate-700">{title}</h3>
-        <span className="rounded-md bg-slate-50 px-2 py-0.5 text-xs font-medium text-slate-400">
-          {unit}
-        </span>
+        <div className="flex items-center gap-2">
+          {hasAnyData && (
+            <button
+              onClick={handleExportCsv}
+              title="Exporter CSV"
+              className="flex items-center gap-1 rounded-md border border-slate-200 bg-slate-50 px-2 py-1 text-xs text-slate-500 transition hover:bg-slate-100"
+            >
+              <DownloadIcon />
+              CSV
+            </button>
+          )}
+          <span className="rounded-md bg-slate-50 px-2 py-0.5 text-xs font-medium text-slate-400">
+            {unit}
+          </span>
+        </div>
       </div>
 
       <div className="h-72 w-full">
