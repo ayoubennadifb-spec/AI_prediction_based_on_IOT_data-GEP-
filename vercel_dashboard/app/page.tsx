@@ -334,7 +334,7 @@ export default function DashboardPage() {
         ) : null}
 
         {/* KPI cards */}
-        <section className="mb-7 grid grid-cols-2 gap-4 md:grid-cols-3 lg:grid-cols-5">
+        <section className="mb-7 grid grid-cols-2 gap-4 sm:grid-cols-3 xl:grid-cols-6">
           {showSkeletons ? (
             Array.from({ length: 6 }).map((_, i) => <KpiCardSkeleton key={i} />)
           ) : (
@@ -345,6 +345,7 @@ export default function DashboardPage() {
                 unit={kpis.curTemp === null ? undefined : "°C"}
                 tone="ok"
                 icon={<ThermometerIcon />}
+                accentColor="#ef4444"
               />
               <KpiCard
                 label="Humidité"
@@ -352,6 +353,7 @@ export default function DashboardPage() {
                 unit={kpis.curHum === null ? undefined : "%"}
                 tone="ok"
                 icon={<HumidityIcon />}
+                accentColor="#0ea5e9"
               />
               <KpiCard
                 label="CO₂"
@@ -361,6 +363,7 @@ export default function DashboardPage() {
                 unit={kpis.curCo2 === null ? undefined : "ppm"}
                 tone={co2Missing ? "warn" : "ok"}
                 icon={<Co2Icon />}
+                accentColor="#14b8a6"
                 note={
                   zone === 2 && co2Missing
                     ? "Pas de capteur CO₂ en Zone 2"
@@ -372,6 +375,7 @@ export default function DashboardPage() {
                 value={fmtClock(kpis.updatedIso)}
                 tone="muted"
                 icon={<ClockIcon />}
+                accentColor="#6366f1"
               />
               <KpiCard
                 label="Prévision"
@@ -383,6 +387,7 @@ export default function DashboardPage() {
                 label="Confort PMV"
                 value={kpis.curPmv === null ? "—" : kpis.curPmv.toFixed(2)}
                 unit={kpis.curPmv === null ? undefined : ""}
+                accentColor="#a855f7"
                 tone={
                   kpis.curPmv === null
                     ? "muted"
@@ -412,6 +417,12 @@ export default function DashboardPage() {
             </>
           )}
         </section>
+
+        <h2 className="mb-4 mt-8 flex items-center gap-2 text-xs font-semibold uppercase tracking-widest text-slate-400">
+          <span className="h-px flex-1 bg-slate-200" />
+          Mesures temps réel & Prévisions LSTM
+          <span className="h-px flex-1 bg-slate-200" />
+        </h2>
 
         {/* Temperature + Humidity charts */}
         <section className="grid grid-cols-1 gap-6 xl:grid-cols-2">
@@ -464,6 +475,12 @@ export default function DashboardPage() {
           )}
         </section>
 
+        <h2 className="mb-4 mt-2 flex items-center gap-2 text-xs font-semibold uppercase tracking-widest text-slate-400">
+          <span className="h-px flex-1 bg-slate-200" />
+          Confort thermique
+          <span className="h-px flex-1 bg-slate-200" />
+        </h2>
+
         {/* PMV (Predicted Mean Vote) — comfort forecast, full width */}
         <section className="mt-6">
           {showSkeletons ? (
@@ -487,11 +504,14 @@ export default function DashboardPage() {
           )}
         </section>
 
+        <h2 className="mb-4 mt-2 flex items-center gap-2 text-xs font-semibold uppercase tracking-widest text-slate-400">
+          <span className="h-px flex-1 bg-slate-200" />
+          Historique
+          <span className="h-px flex-1 bg-slate-200" />
+        </h2>
+
         {/* ── Historique ─────────────────────────────────────────────── */}
         <section className="mt-10">
-          <h2 className="mb-4 text-base font-semibold text-slate-700">
-            Historique des données
-          </h2>
 
           {/* Controls row */}
           <div className="flex flex-wrap items-end gap-3 rounded-xl border border-slate-200 bg-slate-50 px-4 py-4">
