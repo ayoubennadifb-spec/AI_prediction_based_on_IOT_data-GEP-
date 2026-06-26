@@ -1,0 +1,22 @@
+# LSTM inference worker dependencies.
+# Pin minor versions you validated locally before deploying to Render.
+
+# --- InfluxDB Cloud client (Flux queries + line-protocol writes) ---
+influxdb-client>=1.40,<2.0
+
+# --- Deep learning runtime: CPU build is enough for inference on Render ---
+# Use tensorflow-cpu to keep the image small / avoid CUDA on Render.
+# IMPORTANT: the TF/Keras version MUST be compatible with the version that
+# SAVED model/lstm.keras (a Keras 3 .keras file needs TF>=2.16 / keras>=3).
+tensorflow-cpu>=2.16,<2.20
+
+# --- Data handling ---
+pandas>=2.0,<3.0
+numpy>=1.24,<2.2
+
+# --- Scaler persistence / preprocessing ---
+joblib>=1.3
+scikit-learn>=1.3,<2.0
+
+# --- Local .env loading (optional at runtime on Render) ---
+python-dotenv>=1.0

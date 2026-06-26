@@ -1,0 +1,89 @@
+# Render blueprint for the LSTM inference worker.
+# Docs: https://render.com/docs/blueprint-spec
+#
+# This defines a BACKGROUND WORKER (always-on process running the prediction
+# loop). The worker sleeps PREDICT_EVERY_SEC between cycles internally, so a
+# single long-lived process is the right shape (not a web service, no port).
+
+services:
+  - type: worker
+    name: lstm-inference-worker
+    runtime: python
+    plan: starter            # free has no always-on worker; starter keeps it alive
+    region: oregon           # pick the region nearest your InfluxDB Cloud region
+    rootDir: .               # set to the subfolder if this repo holds more than the worker
+    buildCommand: "pip install -r requirements.txt"
+    # PRODUCTION worker: reuses the vendored gep_forecast pipeline + your real
+    # model (artifacts/direct_seed42.keras) for Zone 1. The generic
+    # inference_worker.py is kept as a configurable fallback for a simple model.
+    startCommand: "python production_worker.py"
+    autoDeploy: true
+
+    # --- Environment variables -------------------------------------------------
+    # Put the SECRET token in an env group or the dashboard, never in git.
+    envVars:
+      # --- Source InfluxDB (Ayman's, READ-ONLY) ---
+      - key: SRC_INFLUX_URL
+        sync: false
+      - key: SRC_INFLUX_ORG
+        sync: false
+      - key: SRC_INFLUX_TOKEN
+        sync: false         # SECRET
+      - key: SRC_BUCKET_ZONE1
+        value: Data         # Default, can be overridden
+      - key: SRC_BUCKET_ZONE2
+        value: Zone2        # Default, can be overridden
+
+      # --- Destination InfluxDB (Yours, WRITE) ---
+      - key: DST_INFLUX_URL
+        sync: false
+      - key: DST_INFLUX_ORG
+        sync: false
+      - key: DST_INFLUX_TOKEN
+        sync: false         # SECRET
+      - key: DST_BUCKET
+        value: predictions  # Default, can be overridden
+
+      # --- Worker configuration ---
+      - key: PREDICT_EVERY_SEC
+        value: "600"        # 10-min forecast cadence
+      - key: SERVE_ZONE2_PROXY
+        value: "true"       # Serve Zone2 proxy by default
+      - key: LOG_LEVEL
+        value: INFO
+      # Alternatively reference a shared env group:
+      # - fromGroup: influx-secrets
+
+# ==============================================================================
+# ALTERNATIVE: run as a Render CRON JOB instead of an always-on worker.
+# ------------------------------------------------------------------------------
+# A cron job spins up, runs ONE pass, and exits -- cheaper if you only need a
+# forecast every few minutes and don't want a process billed 24/7.
+#
+# To use this mode:
+#   1. comment out the `services:` block above,
+#   2. uncomment the block below,
+#   3. set PREDICT_EVERY_SEC effectively via the cron `schedule` (the worker
+#      should run ONE cycle and exit -- see RUN_ONCE handling note in README).
+#
+# services:
+#   - type: cron
+#     name: lstm-inference-cron
+#     runtime: python
+#     plan: starter
+#     region: oregon
+#     schedule: "*/5 * * * *"          # every 5 minutes
+#     buildCommand: "pip install -r requirements.txt"
+#     startCommand: "python inference_worker.py"   # add a RUN_ONCE guard for cron
+#     envVars:
+#       - key: INFLUX_URL
+#         sync: false
+#       - key: INFLUX_ORG
+#         sync: false
+#       - key: INFLUX_TOKEN
+#         sync: false
+#       - key: INFLUX_BUCKET_ZONE1
+#         value: Data
+#       - key: INFLUX_BUCKET_ZONE2
+#         value: Zone2
+# ==============================================================================
