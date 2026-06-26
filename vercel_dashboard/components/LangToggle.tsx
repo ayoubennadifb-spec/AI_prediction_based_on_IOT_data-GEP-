@@ -1,3 +1,5 @@
+"use client";
+
 import type { Lang } from "@/lib/i18n";
 
 interface LangToggleProps {

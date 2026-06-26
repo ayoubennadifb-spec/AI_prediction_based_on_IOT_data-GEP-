@@ -1,3 +1,5 @@
+"use client";
+
 import Image from "next/image";
 import StatusBadge from "./StatusBadge";
 import DarkModeToggle from "./DarkModeToggle";
