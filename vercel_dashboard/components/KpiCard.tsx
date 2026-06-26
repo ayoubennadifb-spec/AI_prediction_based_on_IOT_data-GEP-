@@ -25,10 +25,10 @@ const toneAccentColor: Record<KpiTone, string> = {
 };
 
 const toneValueClass: Record<KpiTone, string> = {
-  ok: "text-[#3a6e24]",
-  warn: "text-amber-600",
-  muted: "text-slate-700",
-  purple: "text-purple-700",
+  ok: "text-[#3a6e24] dark:text-green-300",
+  warn: "text-amber-600 dark:text-amber-400",
+  muted: "text-slate-700 dark:text-slate-200",
+  purple: "text-purple-700 dark:text-purple-400",
 };
 
 const toneIconBg: Record<KpiTone, string> = {
@@ -36,6 +36,13 @@ const toneIconBg: Record<KpiTone, string> = {
   warn: "rgba(245,158,11,0.12)",
   muted: "rgba(148,163,184,0.15)",
   purple: "rgba(168,85,247,0.12)",
+};
+
+const toneIconDarkClass: Record<KpiTone, string> = {
+  ok: "dark:bg-brand-900 dark:text-brand-300",
+  warn: "dark:bg-amber-900/40 dark:text-amber-400",
+  muted: "dark:bg-slate-800 dark:text-slate-400",
+  purple: "dark:bg-purple-900/40 dark:text-purple-400",
 };
 
 export default function KpiCard({
@@ -53,7 +60,7 @@ export default function KpiCard({
     : toneIconBg[tone];
 
   return (
-    <div className="rounded-xl bg-white border border-slate-100 shadow-sm hover:shadow-md transition-all duration-200 overflow-hidden">
+    <div className="rounded-xl bg-white border border-slate-100 shadow-sm hover:shadow-md transition-all duration-200 overflow-hidden dark:bg-[#132210] dark:border-[#253d1c] dark:shadow-none">
       {/* Top accent border */}
       <div
         style={{ backgroundColor: resolvedColor, height: "4px" }}
@@ -63,12 +70,12 @@ export default function KpiCard({
       <div className="p-5">
         {/* Label + Icon row */}
         <div className="flex items-start justify-between gap-2">
-          <p className="text-[11px] font-semibold uppercase tracking-widest text-slate-400">
+          <p className="text-[11px] font-semibold uppercase tracking-widest text-slate-400 dark:text-slate-400">
             {label}
           </p>
           {icon ? (
             <span
-              className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg"
+              className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-lg ${toneIconDarkClass[tone]}`}
               style={{
                 backgroundColor: iconBg,
                 color: resolvedColor,
@@ -85,14 +92,14 @@ export default function KpiCard({
         >
           <span className="text-2xl font-bold">{value}</span>
           {unit ? (
-            <span className="ml-1 text-sm font-medium text-slate-400">
+            <span className="ml-1 text-sm font-medium text-slate-400 dark:text-slate-500">
               {unit}
             </span>
           ) : null}
         </p>
 
         {note ? (
-          <p className="mt-2 text-xs text-slate-400">{note}</p>
+          <p className="mt-2 text-xs text-slate-400 dark:text-slate-500">{note}</p>
         ) : null}
       </div>
     </div>

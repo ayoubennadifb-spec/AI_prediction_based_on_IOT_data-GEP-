@@ -15,6 +15,10 @@ import {
   PmvIcon,
   ThermometerIcon,
 } from "@/components/icons";
+import { t, type Lang } from "@/lib/i18n";
+import LangToggle from "@/components/LangToggle";
+
+void LangToggle; // imported for side-effect; Header renders it directly
 
 type Zone = 1 | 2;
 type Field = "temperature" | "humidite" | "gaz" | "pmv";
@@ -132,12 +136,12 @@ function buildCsv(
 
   const header =
     "timestamp,temperature,humidite,co2,pmv,temperature_pred,humidite_pred,pmv_pred";
-  const rows = sorted.map((t) => {
+  const rows = sorted.map((ts) => {
     const v = (m: Map<string, number | null>) => {
-      const val = m.get(t);
+      const val = m.get(ts);
       return val === undefined || val === null ? "" : String(val);
     };
-    return [t, v(tempM), v(humM), v(co2M), "", v(tempP), v(humP), v(pmvP)].join(",");
+    return [ts, v(tempM), v(humM), v(co2M), "", v(tempP), v(humP), v(pmvP)].join(",");
   });
 
   return [header, ...rows].join("\n");
@@ -153,13 +157,6 @@ function downloadCsv(content: string, filename: string) {
   URL.revokeObjectURL(url);
 }
 
-const HISTORY_FIELDS: { value: Field; label: string }[] = [
-  { value: "temperature", label: "Température (°C)" },
-  { value: "humidite", label: "Humidité (%)" },
-  { value: "gaz", label: "CO₂ / Gaz (ppm)" },
-  { value: "pmv", label: "PMV" },
-];
-
 export default function DashboardPage() {
   const [zone, setZone] = useState<Zone>(1);
   const [temp, setTemp] = useState<SeriesResponse | null>(null);
@@ -171,6 +168,10 @@ export default function DashboardPage() {
   const [refreshing, setRefreshing] = useState<boolean>(false);
   const [lastRefresh, setLastRefresh] = useState<Date | null>(null);
 
+  // --- Language state ---
+  const [lang, setLang] = useState<Lang>("fr");
+  const tr = t[lang];
+
   // --- History state ---
   const now = new Date();
   const minus24h = new Date(now.getTime() - 24 * 60 * 60 * 1000);
@@ -181,19 +182,27 @@ export default function DashboardPage() {
   const [histLoading, setHistLoading] = useState<boolean>(false);
   const [histError, setHistError] = useState<string | null>(null);
 
+  // Dynamic history fields (re-computed when lang changes)
+  const HISTORY_FIELDS_DYNAMIC = [
+    { value: "temperature" as Field, label: tr.fieldTemp },
+    { value: "humidite" as Field, label: tr.fieldHum },
+    { value: "gaz" as Field, label: tr.fieldCo2 },
+    { value: "pmv" as Field, label: tr.fieldPmv },
+  ];
+
   const refresh = useCallback(async (z: Zone) => {
     setRefreshing(true);
     try {
-      const [t, h, c, p] = await Promise.all([
+      const [tempRes, humRes, co2Res, pmvRes] = await Promise.all([
         loadSeries(z, "temperature"),
         loadSeries(z, "humidite"),
         loadSeries(z, "gaz"),
         loadSeries(z, "pmv"),
       ]);
-      setTemp(t);
-      setHum(h);
-      setCo2(c);
-      setPmv(p);
+      setTemp(tempRes);
+      setHum(humRes);
+      setCo2(co2Res);
+      setPmv(pmvRes);
       setLastRefresh(new Date());
       setError(null);
     } catch (e) {
@@ -243,7 +252,7 @@ export default function DashboardPage() {
 
   async function handleLoadHistory() {
     if (!histFrom || !histTo) {
-      setHistError("Veuillez sélectionner une plage de dates.");
+      setHistError(tr.histDateError);
       return;
     }
     setHistLoading(true);
@@ -255,7 +264,7 @@ export default function DashboardPage() {
       const data = await loadHistory(zone, histField, fromIso, toIso);
       setHistData(data);
     } catch (e) {
-      setHistError(e instanceof Error ? e.message : "Erreur lors du chargement.");
+      setHistError(e instanceof Error ? e.message : tr.histLoadError);
     } finally {
       setHistLoading(false);
     }
@@ -263,7 +272,8 @@ export default function DashboardPage() {
 
   function handleExportHistoryCsv() {
     if (!histData) return;
-    const fieldLabel = HISTORY_FIELDS.find((f) => f.value === histField)?.label ?? histField;
+    const fieldLabel =
+      HISTORY_FIELDS_DYNAMIC.find((f) => f.value === histField)?.label ?? histField;
     const header = `timestamp,${histField}`;
     const rows = histData.map((p) => `${p.time},${p.value ?? ""}`);
     const csv = [header, ...rows].join("\n");
@@ -274,7 +284,12 @@ export default function DashboardPage() {
 
   return (
     <div className="flex min-h-screen flex-col">
-      <Header live={kpis.live} lastRefresh={lastRefresh} />
+      <Header
+        live={kpis.live}
+        lastRefresh={lastRefresh}
+        lang={lang}
+        onLangToggle={() => setLang((l) => (l === "fr" ? "en" : "fr"))}
+      />
 
       <main className="mx-auto w-full max-w-6xl flex-1 px-4 py-7 sm:px-6">
         {/* Toolbar: zone selector + export CSV + auto-refresh hint */}
@@ -284,22 +299,22 @@ export default function DashboardPage() {
             <button
               onClick={handleExportCsv}
               disabled={!temp && !hum && !co2 && !pmv}
-              className="flex items-center gap-1.5 rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-xs font-medium text-slate-700 shadow-sm transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-40"
+              className="flex items-center gap-1.5 rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-xs font-medium text-slate-700 shadow-sm transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-40 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-300 dark:hover:bg-slate-700"
             >
               <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                 <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
                 <polyline points="7 10 12 15 17 10" />
                 <line x1="12" y1="15" x2="12" y2="3" />
               </svg>
-              Exporter CSV
+              {tr.exportCsv}
             </button>
-            <div className="flex items-center gap-2 text-xs text-slate-400">
+            <div className="flex items-center gap-2 text-xs text-slate-400 dark:text-slate-500">
               <span
                 className={`h-1.5 w-1.5 rounded-full bg-brand-500 ${
                   refreshing ? "animate-pulse-dot" : ""
                 }`}
               />
-              {refreshing ? "Actualisation…" : "Actualisation automatique · 60s"}
+              {refreshing ? tr.refreshing : tr.autoRefresh}
             </div>
           </div>
         </div>
@@ -308,7 +323,7 @@ export default function DashboardPage() {
         {error ? (
           <div
             role="alert"
-            className="mb-6 flex items-start gap-3 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700"
+            className="mb-6 flex items-start gap-3 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700 dark:border-red-900 dark:bg-red-900/20 dark:text-red-400"
           >
             <svg
               width="18"
@@ -325,9 +340,7 @@ export default function DashboardPage() {
               <path d="M12 8v5M12 16h.01" />
             </svg>
             <span>
-              <span className="font-semibold">
-                Impossible de charger les données :
-              </span>{" "}
+              <span className="font-semibold">{tr.loadError}</span>{" "}
               {error}
             </span>
           </div>
@@ -340,7 +353,7 @@ export default function DashboardPage() {
           ) : (
             <>
               <KpiCard
-                label="Température"
+                label={tr.temperature}
                 value={kpis.curTemp === null ? "—" : kpis.curTemp.toFixed(1)}
                 unit={kpis.curTemp === null ? undefined : "°C"}
                 tone="ok"
@@ -348,7 +361,7 @@ export default function DashboardPage() {
                 accentColor="#ef4444"
               />
               <KpiCard
-                label="Humidité"
+                label={tr.humidity}
                 value={kpis.curHum === null ? "—" : kpis.curHum.toFixed(1)}
                 unit={kpis.curHum === null ? undefined : "%"}
                 tone="ok"
@@ -356,7 +369,7 @@ export default function DashboardPage() {
                 accentColor="#0ea5e9"
               />
               <KpiCard
-                label="CO₂"
+                label={tr.co2}
                 value={
                   kpis.curCo2 === null ? "—" : Math.round(kpis.curCo2).toString()
                 }
@@ -366,25 +379,25 @@ export default function DashboardPage() {
                 accentColor="#14b8a6"
                 note={
                   zone === 2 && co2Missing
-                    ? "Pas de capteur CO₂ en Zone 2"
+                    ? tr.noCo2Sensor
                     : undefined
                 }
               />
               <KpiCard
-                label="Dernière mesure"
+                label={tr.lastReading}
                 value={fmtClock(kpis.updatedIso)}
                 tone="muted"
                 icon={<ClockIcon />}
                 accentColor="#6366f1"
               />
               <KpiCard
-                label="Prévision"
-                value={kpis.forecastAvailable ? "Disponible" : "En attente"}
+                label={tr.forecast}
+                value={kpis.forecastAvailable ? tr.forecastAvailable : tr.forecastPending}
                 tone={kpis.forecastAvailable ? "ok" : "warn"}
                 icon={<ForecastIcon />}
               />
               <KpiCard
-                label="Confort PMV"
+                label={tr.pmvComfort}
                 value={kpis.curPmv === null ? "—" : kpis.curPmv.toFixed(2)}
                 unit={kpis.curPmv === null ? undefined : ""}
                 accentColor="#a855f7"
@@ -400,28 +413,28 @@ export default function DashboardPage() {
                   kpis.curPmv === null
                     ? undefined
                     : kpis.curPmv <= -2.5
-                    ? "Froid"
+                    ? tr.pmvCold
                     : kpis.curPmv <= -1.5
-                    ? "Frais"
+                    ? tr.pmvCool
                     : kpis.curPmv <= -0.5
-                    ? "Légèrement frais"
+                    ? tr.pmvSlightlyCool
                     : kpis.curPmv <= 0.5
-                    ? "Neutre"
+                    ? tr.pmvNeutral
                     : kpis.curPmv <= 1.5
-                    ? "Légèrement chaud"
+                    ? tr.pmvSlightlyWarm
                     : kpis.curPmv <= 2.5
-                    ? "Chaud"
-                    : "Très chaud"
+                    ? tr.pmvWarm
+                    : tr.pmvHot
                 }
               />
             </>
           )}
         </section>
 
-        <h2 className="mb-4 mt-8 flex items-center gap-2 text-xs font-semibold uppercase tracking-widest text-slate-400">
-          <span className="h-px flex-1 bg-slate-200" />
-          Mesures temps réel & Prévisions LSTM
-          <span className="h-px flex-1 bg-slate-200" />
+        <h2 className="mb-4 mt-8 flex items-center gap-2 text-sm font-bold uppercase tracking-wider text-slate-600 dark:text-slate-300">
+          <span className="h-px flex-1 bg-slate-300 dark:bg-slate-600" />
+          {tr.sectionRealtime}
+          <span className="h-px flex-1 bg-slate-300 dark:bg-slate-600" />
         </h2>
 
         {/* Temperature + Humidity charts */}
@@ -434,14 +447,14 @@ export default function DashboardPage() {
           ) : (
             <>
               <ZoneChart
-                title={`Zone ${zone} · Température`}
+                title={`Zone ${zone} · ${tr.temperature}`}
                 unit="°C"
                 measured={temp?.measured ?? []}
                 predicted={temp?.predicted ?? []}
                 color="#76b82a"
               />
               <ZoneChart
-                title={`Zone ${zone} · Humidité`}
+                title={`Zone ${zone} · ${tr.humidity}`}
                 unit="%"
                 measured={hum?.measured ?? []}
                 predicted={hum?.predicted ?? []}
@@ -458,27 +471,25 @@ export default function DashboardPage() {
           ) : (
             <>
               <ZoneChart
-                title={`Zone ${zone} · CO₂ (temps réel)`}
+                title={`Zone ${zone} · CO₂ (${lang === "fr" ? "temps réel" : "real-time"})`}
                 unit=" ppm"
                 measured={co2?.measured ?? []}
                 predicted={[]}
                 color="#14b8a6"
-                measuredLabel="CO₂ mesuré"
+                measuredLabel="CO₂"
                 forecast={false}
               />
               <p className="mt-2 text-xs text-slate-400">
-                {zone === 2
-                  ? "La Zone 2 ne dispose pas de capteur de gaz/CO₂."
-                  : "CO₂ en temps réel (capteur MQ-135) — pas de prévision pour le CO₂."}
+                {zone === 2 ? tr.co2NoteZone2 : tr.co2NoteZone1}
               </p>
             </>
           )}
         </section>
 
-        <h2 className="mb-4 mt-2 flex items-center gap-2 text-xs font-semibold uppercase tracking-widest text-slate-400">
-          <span className="h-px flex-1 bg-slate-200" />
-          Confort thermique
-          <span className="h-px flex-1 bg-slate-200" />
+        <h2 className="mb-4 mt-2 flex items-center gap-2 text-sm font-bold uppercase tracking-wider text-slate-600 dark:text-slate-300">
+          <span className="h-px flex-1 bg-slate-300 dark:bg-slate-600" />
+          {tr.sectionComfort}
+          <span className="h-px flex-1 bg-slate-300 dark:bg-slate-600" />
         </h2>
 
         {/* PMV (Predicted Mean Vote) — comfort forecast, full width */}
@@ -488,59 +499,56 @@ export default function DashboardPage() {
           ) : (
             <>
               <ZoneChart
-                title={`Zone ${zone} · Confort thermique PMV (prévision)`}
+                title={`Zone ${zone} · ${tr.pmvComfort} (${lang === "fr" ? "prévision" : "forecast"})`}
                 unit=""
                 measured={[]}
                 predicted={pmv?.predicted ?? []}
                 color="#a855f7"
-                measuredLabel="PMV mesuré"
+                measuredLabel="PMV"
                 forecast={true}
               />
-              <p className="mt-2 text-xs text-slate-400">
-                PMV (Predicted Mean Vote, ISO 7730) : −3 froid → 0 neutre → +3 chaud.
-                Zone de confort : −0,5 ≤ PMV ≤ +0,5. Calculé sur les prévisions temp./humidité.
-              </p>
+              <p className="mt-2 text-xs text-slate-400">{tr.pmvNote}</p>
             </>
           )}
         </section>
 
-        <h2 className="mb-4 mt-2 flex items-center gap-2 text-xs font-semibold uppercase tracking-widest text-slate-400">
-          <span className="h-px flex-1 bg-slate-200" />
-          Historique
-          <span className="h-px flex-1 bg-slate-200" />
+        <h2 className="mb-4 mt-2 flex items-center gap-2 text-sm font-bold uppercase tracking-wider text-slate-600 dark:text-slate-300">
+          <span className="h-px flex-1 bg-slate-300 dark:bg-slate-600" />
+          {tr.sectionHistory}
+          <span className="h-px flex-1 bg-slate-300 dark:bg-slate-600" />
         </h2>
 
         {/* ── Historique ─────────────────────────────────────────────── */}
         <section className="mt-10">
 
           {/* Controls row */}
-          <div className="flex flex-wrap items-end gap-3 rounded-xl border border-slate-200 bg-slate-50 px-4 py-4">
+          <div className="flex flex-wrap items-end gap-3 rounded-xl border border-slate-200 bg-slate-50 px-4 py-4 dark:border-slate-700 dark:bg-[#132210]">
             <div className="flex flex-col gap-1">
-              <label className="text-xs font-medium text-slate-500">Début</label>
+              <label className="text-xs font-medium text-slate-500 dark:text-slate-400">{tr.histStart}</label>
               <input
                 type="datetime-local"
                 value={histFrom}
                 onChange={(e) => setHistFrom(e.target.value)}
-                className="rounded-lg border border-slate-200 bg-white px-2.5 py-1.5 text-sm text-slate-700 shadow-sm focus:outline-none focus:ring-2 focus:ring-brand-500"
+                className="rounded-lg border border-slate-200 bg-white px-2.5 py-1.5 text-sm text-slate-700 shadow-sm focus:outline-none focus:ring-2 focus:ring-brand-500 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200"
               />
             </div>
             <div className="flex flex-col gap-1">
-              <label className="text-xs font-medium text-slate-500">Fin</label>
+              <label className="text-xs font-medium text-slate-500 dark:text-slate-400">{tr.histEnd}</label>
               <input
                 type="datetime-local"
                 value={histTo}
                 onChange={(e) => setHistTo(e.target.value)}
-                className="rounded-lg border border-slate-200 bg-white px-2.5 py-1.5 text-sm text-slate-700 shadow-sm focus:outline-none focus:ring-2 focus:ring-brand-500"
+                className="rounded-lg border border-slate-200 bg-white px-2.5 py-1.5 text-sm text-slate-700 shadow-sm focus:outline-none focus:ring-2 focus:ring-brand-500 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200"
               />
             </div>
             <div className="flex flex-col gap-1">
-              <label className="text-xs font-medium text-slate-500">Mesure</label>
+              <label className="text-xs font-medium text-slate-500 dark:text-slate-400">{tr.histMeasure}</label>
               <select
                 value={histField}
                 onChange={(e) => setHistField(e.target.value as Field)}
-                className="rounded-lg border border-slate-200 bg-white px-2.5 py-1.5 text-sm text-slate-700 shadow-sm focus:outline-none focus:ring-2 focus:ring-brand-500"
+                className="rounded-lg border border-slate-200 bg-white px-2.5 py-1.5 text-sm text-slate-700 shadow-sm focus:outline-none focus:ring-2 focus:ring-brand-500 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200"
               >
-                {HISTORY_FIELDS.map((f) => (
+                {HISTORY_FIELDS_DYNAMIC.map((f) => (
                   <option key={f.value} value={f.value}>
                     {f.label}
                   </option>
@@ -552,65 +560,30 @@ export default function DashboardPage() {
               disabled={histLoading}
               className="rounded-lg bg-brand-500 px-4 py-2 text-sm font-medium text-white shadow-sm transition hover:bg-brand-600 disabled:cursor-not-allowed disabled:opacity-50"
             >
-              {histLoading ? "Chargement…" : "Charger"}
+              {histLoading ? tr.histLoading : tr.histLoad}
             </button>
           </div>
 
           {/* Error */}
           {histError ? (
-            <p className="mt-3 text-sm text-red-600">{histError}</p>
+            <p className="mt-3 text-sm text-red-600 dark:text-red-400">{histError}</p>
           ) : null}
 
           {/* Results graph */}
           {histData !== null && (
             <div className="mt-4">
               {histData.length === 0 ? (
-                <p className="text-sm text-slate-500">Aucune donnée pour cette période.</p>
+                <p className="text-sm text-slate-500 dark:text-slate-400">{tr.histNoData}</p>
               ) : (
                 <>
                   <div className="mb-2 flex items-center justify-between">
-                    <p className="text-sm text-slate-500">
-                      {histData.length} point{histData.length > 1 ? "s" : ""} · agrégation 5 min
+                    <p className="text-sm text-slate-500 dark:text-slate-400">
+                      {tr.histPoints(histData.length)}
                     </p>
                     <button
                       onClick={handleExportHistoryCsv}
-                      className="flex items-center gap-1.5 rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-xs font-medium text-slate-700 shadow-sm transition hover:bg-slate-50"
+                      className="flex items-center gap-1.5 rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-xs font-medium text-slate-700 shadow-sm transition hover:bg-slate-50 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-300"
                     >
                       <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                         <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
-                        <polyline points="7 10 12 15 17 10" />
-                        <line x1="12" y1="15" x2="12" y2="3" />
-                      </svg>
-                      Exporter CSV
-                    </button>
-                  </div>
-                  <ZoneChart
-                    title={HISTORY_FIELDS.find((f) => f.value === histField)?.label ?? histField}
-                    unit={
-                      histField === "temperature" ? " °C"
-                      : histField === "humidite" ? " %"
-                      : histField === "gaz" ? " ppm"
-                      : ""
-                    }
-                    measured={histData as SeriesPoint[]}
-                    predicted={[]}
-                    forecast={false}
-                    color={
-                      histField === "temperature" ? "#76b82a"
-                      : histField === "humidite" ? "#0ea5e9"
-                      : histField === "gaz" ? "#14b8a6"
-                      : "#a855f7"
-                    }
-                    measuredLabel={HISTORY_FIELDS.find((f) => f.value === histField)?.label ?? histField}
-                  />
-                </>
-              )}
-            </div>
-          )}
-        </section>
-      </main>
-
-      <Footer />
-    </div>
-  );
-}
+                        <

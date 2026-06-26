@@ -168,21 +168,21 @@ export default function ZoneChart({
   }
 
   return (
-    <div className="rounded-xl border border-slate-200/80 bg-white p-5 shadow-card">
+    <div className="rounded-xl border border-slate-200/80 bg-white p-5 shadow-card dark:bg-[#132210] dark:border-[#253d1c]">
       <div className="mb-4 flex items-center justify-between gap-2">
-        <h3 className="text-sm font-semibold text-slate-700">{title}</h3>
+        <h3 className="text-sm font-semibold text-slate-700 dark:text-slate-200">{title}</h3>
         <div className="flex items-center gap-2">
           {hasAnyData && (
             <button
               onClick={handleExportCsv}
               title="Exporter CSV"
-              className="flex items-center gap-1 rounded-md border border-slate-200 bg-slate-50 px-2 py-1 text-xs text-slate-500 transition hover:bg-slate-100"
+              className="flex items-center gap-1 rounded-md border border-slate-200 bg-slate-50 px-2 py-1 text-xs text-slate-500 transition hover:bg-slate-100 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-300 dark:hover:bg-slate-700"
             >
               <DownloadIcon />
               CSV
             </button>
           )}
-          <span className="rounded-md bg-slate-50 px-2 py-0.5 text-xs font-medium text-slate-400">
+          <span className="rounded-md bg-slate-50 px-2 py-0.5 text-xs font-medium text-slate-400 dark:bg-slate-800 dark:text-slate-400">
             {unit}
           </span>
         </div>
@@ -296,7 +296,7 @@ export default function ZoneChart({
               <path d="M3 3v18h18" />
               <path d="M7 14l3-3 3 3 4-5" />
             </svg>
-            <p className="text-sm text-slate-400">
+            <p className="text-sm text-slate-400 dark:text-slate-500">
               En attente de données capteurs…
             </p>
           </div>
@@ -304,7 +304,7 @@ export default function ZoneChart({
       </div>
 
       {forecast && hasMeasured && !hasForecast ? (
-        <p className="mt-3 text-xs text-slate-400">
+        <p className="mt-3 text-xs text-slate-400 dark:text-slate-500">
           La prévision apparaîtra dès que le worker LSTM écrit ses prédictions.
         </p>
       ) : null}
