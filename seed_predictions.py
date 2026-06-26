@@ -192,24 +192,29 @@ def write_forecast(dst_client, result: serving.ForecastResult, pred_meas: str = 
 
     wapi   = dst_client.write_api(write_options=SYNCHRONOUS)
     origin = result.origin.isoformat()
-    # Shift forecast timestamps to NOW so they fit within the 30-day retention window
     now_utc = datetime.now(timezone.utc)
+    horizon = len(result.frame)  # 240
+
+    # Write two batches:
+    #   PAST   (offset=-horizon): timestamps NOW-240..NOW-1  → overlaps measured line
+    #   FUTURE (offset=0):        timestamps NOW+1..NOW+240  → forecast ahead of now
     points = []
-    for i, (_, row) in enumerate(result.frame.iterrows()):
-        ts = now_utc + pd.Timedelta(minutes=i + 1)
-        pt = (
-            Point(pred_meas)
-            .tag("origin", origin)
-            .field("temperature_pred", float(row["temperature"]))
-            .field("humidite_pred",    float(row["humidity"]))
-        )
-        if not np.isnan(pmv_vals[i]):
-            pt = pt.field("pmv_pred", float(pmv_vals[i]))
-        pt = pt.time(ts, WritePrecision.NS)
-        points.append(pt)
+    for batch_offset, tag_suffix in ((-horizon, "past"), (0, "future")):
+        for i, (_, row) in enumerate(result.frame.iterrows()):
+            ts = now_utc + pd.Timedelta(minutes=batch_offset + i + 1)
+            pt = (
+                Point(pred_meas)
+                .tag("origin", f"{origin}_{tag_suffix}")
+                .field("temperature_pred", float(row["temperature"]))
+                .field("humidite_pred",    float(row["humidity"]))
+            )
+            if not np.isnan(pmv_vals[i]):
+                pt = pt.field("pmv_pred", float(pmv_vals[i]))
+            pt = pt.time(ts, WritePrecision.NS)
+            points.append(pt)
 
     wapi.write(bucket=DST_BUCKET, org=DST_ORG, record=points)
-    return len(points)
+    return len(points)  # 480 per zone (240 past + 240 future)
 
 
 # ── Main ──────────────────────────────────────────────────────────────────────

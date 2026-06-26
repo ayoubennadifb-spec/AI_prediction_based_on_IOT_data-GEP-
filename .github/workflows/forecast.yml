@@ -16,7 +16,7 @@ name: LSTM forecast (free)
 
 on:
   schedule:
-    - cron: "*/15 * * * *"     # every 15 min (UTC). GitHub may delay under load.
+    - cron: "*/10 * * * *"     # every 10 min (UTC) — matches PREDICT_EVERY_SEC=600.
   workflow_dispatch: {}          # manual "Run workflow" button for testing
 
 concurrency:

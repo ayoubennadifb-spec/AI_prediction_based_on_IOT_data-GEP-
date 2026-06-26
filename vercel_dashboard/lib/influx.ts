@@ -195,4 +195,12 @@ from(bucket: "${bucket}")
  */
 export async function fetchHistory(
   zone: Zone,
-  fi
+  field: Field,
+  from: string,
+  to: string,
+): Promise<SeriesPoint[]> {
+  return runSeriesQuery(
+    srcQueryApi(zone),
+    historyFlux(sourceBucket(zone), sourceMeasurement(zone), field, from, to),
+  );
+}
