@@ -583,4 +583,39 @@ export default function DashboardPage() {
                     >
                       <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                         <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
-                        <
+                        <polyline points="7 10 12 15 17 10" />
+                        <line x1="12" y1="15" x2="12" y2="3" />
+                      </svg>
+                      {tr.exportCsv}
+                    </button>
+                  </div>
+                  <ZoneChart
+                    title={HISTORY_FIELDS_DYNAMIC.find((f) => f.value === histField)?.label ?? histField}
+                    unit={
+                      histField === "temperature" ? " °C"
+                      : histField === "humidite" ? " %"
+                      : histField === "gaz" ? " ppm"
+                      : ""
+                    }
+                    measured={histData as SeriesPoint[]}
+                    predicted={[]}
+                    forecast={false}
+                    color={
+                      histField === "temperature" ? "#76b82a"
+                      : histField === "humidite" ? "#0ea5e9"
+                      : histField === "gaz" ? "#14b8a6"
+                      : "#a855f7"
+                    }
+                    measuredLabel={HISTORY_FIELDS_DYNAMIC.find((f) => f.value === histField)?.label ?? histField}
+                  />
+                </>
+              )}
+            </div>
+          )}
+        </section>
+      </main>
+
+      <Footer lang={lang} />
+    </div>
+  );
+}
